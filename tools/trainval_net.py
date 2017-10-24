@@ -16,6 +16,7 @@ import argparse
 import pprint
 import numpy as np
 import sys
+import pdb
 
 import tensorflow as tf
 from nets.vgg16 import vgg16
@@ -86,6 +87,7 @@ def combined_roidb(imdb_names):
 
 
 if __name__ == '__main__':
+  pdb.set_trace()
   args = parse_args()
 
   print('Called with args:')
@@ -133,7 +135,7 @@ if __name__ == '__main__':
     net = mobilenetv1(batch_size=cfg.TRAIN.IMS_PER_BATCH)
   else:
     raise NotImplementedError
-    
+
   train_net(net, imdb, roidb, valroidb, output_dir, tb_dir,
             pretrained_model=args.weight,
             max_iters=args.max_iters)

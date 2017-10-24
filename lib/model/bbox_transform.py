@@ -9,8 +9,9 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-
+import pdb
 def bbox_transform(ex_rois, gt_rois):
+  #pdb.set_trace()
   ex_widths = ex_rois[:, 2] - ex_rois[:, 0] + 1.0
   ex_heights = ex_rois[:, 3] - ex_rois[:, 1] + 1.0
   ex_ctr_x = ex_rois[:, 0] + 0.5 * ex_widths
@@ -18,6 +19,9 @@ def bbox_transform(ex_rois, gt_rois):
 
   gt_widths = gt_rois[:, 2] - gt_rois[:, 0] + 1.0
   gt_heights = gt_rois[:, 3] - gt_rois[:, 1] + 1.0
+  if(not((gt_widths).all()>0 or (ex_widths).all()>0)):
+    pdb.set_trace()
+  #print(ex_widths,ex_heights,gt_widths,gt_heights)
   gt_ctr_x = gt_rois[:, 0] + 0.5 * gt_widths
   gt_ctr_y = gt_rois[:, 1] + 0.5 * gt_heights
 
@@ -45,7 +49,7 @@ def bbox_transform_inv(boxes, deltas):
   dy = deltas[:, 1::4]
   dw = deltas[:, 2::4]
   dh = deltas[:, 3::4]
-  
+
   pred_ctr_x = dx * widths[:, np.newaxis] + ctr_x[:, np.newaxis]
   pred_ctr_y = dy * heights[:, np.newaxis] + ctr_y[:, np.newaxis]
   pred_w = np.exp(dw) * widths[:, np.newaxis]

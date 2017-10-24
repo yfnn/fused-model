@@ -19,7 +19,7 @@ cfg = __C
 __C.TRAIN = edict()
 
 # Initial learning rate
-__C.TRAIN.LEARNING_RATE = 0.001
+__C.TRAIN.LEARNING_RATE = 0.0001
 
 # Momentum
 __C.TRAIN.MOMENTUM = 0.9
@@ -39,7 +39,7 @@ __C.TRAIN.DISPLAY = 10
 # Whether to double the learning rate for bias
 __C.TRAIN.DOUBLE_BIAS = True
 
-# Whether to initialize the weights with truncated normal distribution 
+# Whether to initialize the weights with truncated normal distribution
 __C.TRAIN.TRUNCATED = False
 
 # Whether to have weight decay on bias as well
@@ -147,7 +147,7 @@ __C.TRAIN.RPN_BBOX_INSIDE_WEIGHTS = (1.0, 1.0, 1.0, 1.0)
 # and give negatives a weight of (1 - p)
 # Set to -1.0 to use uniform example weighting
 __C.TRAIN.RPN_POSITIVE_WEIGHT = -1.0
-# Whether to use all ground truth bounding boxes for training, 
+# Whether to use all ground truth bounding boxes for training,
 # For COCO, setting USE_ALL_GT to False will exclude boxes that are flagged as ''iscrowd''
 __C.TRAIN.USE_ALL_GT = True
 
@@ -207,8 +207,8 @@ __C.TEST.RPN_TOP_N = 5000
 
 __C.RESNET = edict()
 
-# Option to set if max-pooling is appended after crop_and_resize. 
-# if true, the region will be resized to a square of 2xPOOLING_SIZE, 
+# Option to set if max-pooling is appended after crop_and_resize.
+# if true, the region will be resized to a square of 2xPOOLING_SIZE,
 # then 2x2 max-pooling is applied; otherwise the region will be directly
 # resized to a square of POOLING_SIZE
 __C.RESNET.MAX_POOL = False
@@ -271,7 +271,7 @@ __C.MATLAB = 'matlab'
 __C.EXP_DIR = 'default'
 
 # Use GPU implementation of non-maximum suppression
-__C.USE_GPU_NMS = True
+__C.USE_GPU_NMS = False
 
 # Default GPU device id
 __C.GPU_ID = 0

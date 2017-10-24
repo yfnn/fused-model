@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 import os
 import pickle
 import numpy as np
+import pdb
 
 def parse_rec(filename):
   """ Parse a PASCAL VOC xml file """
@@ -98,10 +99,11 @@ def voc_eval(detpath,
   # assumes imagesetfile is a text file with each line an image name
   # cachedir caches the annotations in a pickle file
 
+  #pdb.set_trace()
   # first load gt
   if not os.path.isdir(cachedir):
     os.mkdir(cachedir)
-  cachefile = os.path.join(cachedir, '%s_annots.pkl' % imagesetfile)
+  cachefile = os.path.join(cachedir, '%s_annots.pkl' % 'imagesetfile')
   # read list of images
   with open(imagesetfile, 'r') as f:
     lines = f.readlines()
@@ -117,8 +119,9 @@ def voc_eval(detpath,
           i + 1, len(imagenames)))
     # save
     print('Saving cached annotations to {:s}'.format(cachefile))
-    with open(cachefile, 'w') as f:
+    with open(cachefile, 'wb') as f:
       pickle.dump(recs, f)
+      #f.close()
   else:
     # load
     with open(cachefile, 'rb') as f:

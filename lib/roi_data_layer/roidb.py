@@ -15,6 +15,7 @@ from model.config import cfg
 from model.bbox_transform import bbox_transform
 from utils.cython_bbox import bbox_overlaps
 import PIL
+import pdb
 
 def prepare_roidb(imdb):
   """Enrich the imdb's roidb by adding some derived quantities that

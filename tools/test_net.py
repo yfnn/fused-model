@@ -16,6 +16,7 @@ import pprint
 import time, os, sys
 
 import tensorflow as tf
+import pdb
 from nets.vgg16 import vgg16
 from nets.resnet_v1 import resnetv1
 from nets.mobilenet_v1 import mobilenetv1
@@ -57,6 +58,7 @@ def parse_args():
 
 if __name__ == '__main__':
   args = parse_args()
+  pdb.set_trace()
 
   print('Called with args:')
   print(args)
@@ -83,8 +85,9 @@ if __name__ == '__main__':
   imdb = get_imdb(args.imdb_name)
   imdb.competition_mode(args.comp_mode)
 
-  tfconfig = tf.ConfigProto(allow_soft_placement=True)
-  tfconfig.gpu_options.allow_growth=True
+  #tfconfig = tf.ConfigProto(allow_soft_placement=True)
+  #tfconfig.gpu_options.allow_growth=True
+  tfconfig = tf.ConfigProto(device_count={'GPU':0})
 
   # init session
   sess = tf.Session(config=tfconfig)
@@ -116,7 +119,7 @@ if __name__ == '__main__':
     print(('Loading initial weights from {:s}').format(args.weight))
     sess.run(tf.global_variables_initializer())
     print('Loaded.')
-
+  
   test_net(sess, net, imdb, filename, max_per_image=args.max_per_image)
 
   sess.close()

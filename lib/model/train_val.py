@@ -20,6 +20,7 @@ import os
 import sys
 import glob
 import time
+import pdb
 
 import tensorflow as tf
 from tensorflow.python import pywrap_tensorflow
@@ -83,7 +84,7 @@ class SolverWrapper(object):
     try:
       reader = pywrap_tensorflow.NewCheckpointReader(file_name)
       var_to_shape_map = reader.get_variable_to_shape_map()
-      return var_to_shape_map 
+      return var_to_shape_map
     except Exception as e:  # pylint: disable=broad-except
       print(str(e))
       if "corrupted compressed block contents" in str(e):
@@ -217,6 +218,9 @@ class SolverWrapper(object):
       timer.tic()
       # Get training data, one batch at a time
       blobs = self.data_layer.forward()
+      if blobs['gt_boxes'][0][0]>blobs['gt_boxes'][0][2] or blobs['gt_boxes'][0][1]>blobs['gt_boxes'][0][3]:
+          iter += 1
+          continue
 
       now = time.time()
       if now - last_summary_time > cfg.TRAIN.SUMMARY_INTERVAL:
@@ -236,6 +240,8 @@ class SolverWrapper(object):
       timer.toc()
 
       # Display training information
+      #if iter == 102:
+      #  pdb.set_trace()
       if iter % (cfg.TRAIN.DISPLAY) == 0:
         print('iter: %d / %d, total loss: %.6f\n >>> rpn_loss_cls: %.6f\n '
               '>>> rpn_loss_box: %.6f\n >>> loss_cls: %.6f\n >>> loss_box: %.6f\n >>> lr: %f' % \
@@ -326,8 +332,9 @@ def train_net(network, imdb, roidb, valroidb, output_dir, tb_dir,
   roidb = filter_roidb(roidb)
   valroidb = filter_roidb(valroidb)
 
-  tfconfig = tf.ConfigProto(allow_soft_placement=True)
-  tfconfig.gpu_options.allow_growth = True
+  #tfconfig = tf.ConfigProto(allow_soft_placement=True)
+  #tfconfig.gpu_options.allow_growth = True
+  tfconfig = tf.ConfigProto(device_count={'GPU':0})
 
   with tf.Session(config=tfconfig) as sess:
     sw = SolverWrapper(sess, network, imdb, roidb, valroidb, output_dir, tb_dir,
