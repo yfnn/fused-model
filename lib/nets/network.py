@@ -39,17 +39,22 @@ class Network(object):
     self._event_summaries = {}
     self._variables_to_fix = {}
 
-  def _add_image_summary(self, image, gt_boxes, im_info):
+  def _add_image_summary(self, imageT, imageRGB, gt_boxes, im_info):
     # add back mean
-    image += cfg.PIXEL_MEANS
+    imageT += cfg.PIXEL_MEANS_T
+    imageRGB += cfg.PIXEL_MEANS_RGB
     # BGR to RGB (opencv uses BGR)
-    image = tf.reverse(image, axis=[-1])
+    imageT = tf.reverse(imageT, axis=[-1])
+    imageRGB = tf.reverse(imageRGB, axis=[-1])
     # use a customized visualization function to visualize the boxes
-    image = tf.py_func(draw_bounding_boxes, 
-                      [image, gt_boxes, im_info],
+    imageT = tf.py_func(draw_bounding_boxes,
+                      [imageT, gt_boxes, im_info],
                       tf.float32)
-    
-    return tf.summary.image('ground_truth', image)
+    imageRGB = tf.py_func(draw_bounding_boxes,
+                          [imageRGB, gt_boxes, im_info],
+                          tf.float32)
+
+    return tf.summary.image('ground_truthT', imageT),tf.summary.image('ground_truthRGB',imageRGB)
 
   def _add_act_summary(self, tensor):
     tf.summary.histogram('ACT/' + tensor.op.name + '/activations', tensor)
@@ -298,13 +303,13 @@ class Network(object):
     return rois
 
   def _region_classification(self, fc7, is_training, initializer, initializer_bbox):
-    cls_score = slim.fully_connected(fc7, self._num_classes, 
+    cls_score = slim.fully_connected(fc7, self._num_classes,
                                        weights_initializer=initializer,
                                        trainable=is_training,
                                        activation_fn=None, scope='cls_score')
     cls_prob = self._softmax_layer(cls_score, "cls_prob")
     cls_pred = tf.argmax(cls_score, axis=1, name="cls_pred")
-    bbox_pred = slim.fully_connected(fc7, self._num_classes * 4, 
+    bbox_pred = slim.fully_connected(fc7, self._num_classes * 4,
                                      weights_initializer=initializer_bbox,
                                      trainable=is_training,
                                      activation_fn=None, scope='bbox_pred')
@@ -318,7 +323,9 @@ class Network(object):
 
   def create_architecture(self, sess, mode, num_classes, tag=None,
                           anchor_scales=(8, 16, 32), anchor_ratios=(0.5, 1, 2)):
-    self._image = tf.placeholder(tf.float32, shape=[self._batch_size, None, None, 3])
+    #self._image = tf.placeholder(tf.float32, shape=[self._batch_size, None, None, 3])
+    self._imageT = tf.placeholder(tf.float32, shape=[self._batch_size, None, None, 3])
+    self._imageRGB = tf.placeholder(tf.float32, shape=[self._batch_size, None, None, 3])
     self._im_info = tf.placeholder(tf.float32, shape=[self._batch_size, 3])
     self._gt_boxes = tf.placeholder(tf.float32, shape=[None, 5])
     self._tag = tag
@@ -347,10 +354,10 @@ class Network(object):
 
     # list as many types of layers as possible, even if they are not used now
     with arg_scope([slim.conv2d, slim.conv2d_in_plane, \
-                    slim.conv2d_transpose, slim.separable_conv2d, slim.fully_connected], 
+                    slim.conv2d_transpose, slim.separable_conv2d, slim.fully_connected],
                     weights_regularizer=weights_regularizer,
-                    biases_regularizer=biases_regularizer, 
-                    biases_initializer=tf.constant_initializer(0.0)): 
+                    biases_regularizer=biases_regularizer,
+                    biases_initializer=tf.constant_initializer(0.0)):
       rois, cls_prob, bbox_pred = self._build_network(sess, training)
 
     layers_to_output = {'rois': rois}
@@ -370,7 +377,7 @@ class Network(object):
 
     val_summaries = []
     with tf.device("/cpu:0"):
-      val_summaries.append(self._add_image_summary(self._image, self._gt_boxes, self._im_info))
+      val_summaries.append(self._add_image_summary(self._imageT, self._imageRGB, self._gt_boxes, self._im_info))
       for key, var in self._event_summaries.items():
         val_summaries.append(tf.summary.scalar(key, var))
       for key, var in self._score_summaries.items():
@@ -412,14 +419,16 @@ class Network(object):
     return cls_score, cls_prob, bbox_pred, rois
 
   def get_summary(self, sess, blobs):
-    feed_dict = {self._image: blobs['data'], self._im_info: blobs['im_info'],
+    feed_dict = {self._imageT: blobs['dataT'], self._imageRGB: blobs['dataRGB'], self._im_info: blobs['im_info'],
                  self._gt_boxes: blobs['gt_boxes']}
     summary = sess.run(self._summary_op_val, feed_dict=feed_dict)
 
     return summary
 
   def train_step(self, sess, blobs, train_op):
-    feed_dict = {self._image: blobs['data'], self._im_info: blobs['im_info'],
+    #feed_dict = {self._imageT: blobs['data'], self._im_info: blobs['im_info'],
+    #             self._gt_boxes: blobs['gt_boxes']}
+    feed_dict = {self._imageT: blobs['dataT'], self._imageRGB: blobs['dataRGB'], self._im_info: blobs['im_info'],
                  self._gt_boxes: blobs['gt_boxes']}
     rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss, _ = sess.run([self._losses["rpn_cross_entropy"],
                                                                         self._losses['rpn_loss_box'],
@@ -431,7 +440,9 @@ class Network(object):
     return rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss
 
   def train_step_with_summary(self, sess, blobs, train_op):
-    feed_dict = {self._image: blobs['data'], self._im_info: blobs['im_info'],
+    #feed_dict = {self._image: blobs['data'], self._im_info: blobs['im_info'],
+    #             self._gt_boxes: blobs['gt_boxes']}
+    feed_dict = {self._imageT: blobs['dataT'], self._imageRGB: blobs['dataRGB'], self._im_info: blobs['im_info'],
                  self._gt_boxes: blobs['gt_boxes']}
     rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss, summary, _ = sess.run([self._losses["rpn_cross_entropy"],
                                                                                  self._losses['rpn_loss_box'],

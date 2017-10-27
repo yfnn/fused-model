@@ -103,8 +103,14 @@ class imdb(object):
     raise NotImplementedError
 
   def _get_widths(self):
-    return [PIL.Image.open(self.image_path_at(i)).size[0]
-            for i in range(self.num_images)]
+    #filepathT, filepathRGB= self.image_path_at(i)
+    #return [PIL.Image.open(filepathT).size[0]
+    #        for i in range(self.num_images)]
+    widths = []
+    for i in range(self.num_images):
+      filepathT, filepathRGB= self.image_path_at(i)
+      widths.append(PIL.Image.open(filepathT).size[0])
+    return widths
 
   def append_flipped_images(self):
     num_images = self.num_images
@@ -112,12 +118,13 @@ class imdb(object):
     #pdb.set_trace()
     for i in range(num_images):
       boxes = self.roidb[i]['boxes'].copy()
+      boxesH = boxes
       oldx1 = boxes[:, 0].copy()
       oldx2 = boxes[:, 2].copy()
-      boxes[:, 0] = widths[i] - oldx2 - 1
-      boxes[:, 2] = widths[i] - oldx1 - 1
-      #if(not(boxes[:, 2] >= boxes[:, 0]).all()):
-      #  pdb.set_trace()
+      boxes[:, 0] = widths[i] - oldx2
+      boxes[:, 2] = widths[i] - oldx1
+      if(not(boxes[:, 2] >= boxes[:, 0]).all()):
+        pdb.set_trace()
       #  print('wait')
       assert (boxes[:, 2] >= boxes[:, 0]).all()
       entry = {'boxes': boxes,

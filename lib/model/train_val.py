@@ -101,6 +101,7 @@ class SolverWrapper(object):
       # Set the random seed for tensorflow
       tf.set_random_seed(cfg.RNG_SEED)
       # Build the main computation graph
+      pdb.set_trace()
       layers = self.net.create_architecture(sess, 'TRAIN', self.imdb.num_classes, tag='default',
                                             anchor_scales=cfg.ANCHOR_SCALES,
                                             anchor_ratios=cfg.ANCHOR_RATIOS)
@@ -217,6 +218,7 @@ class SolverWrapper(object):
 
       timer.tic()
       # Get training data, one batch at a time
+      #pdb.set_trace()
       blobs = self.data_layer.forward()
       if blobs['gt_boxes'][0][0]>blobs['gt_boxes'][0][2] or blobs['gt_boxes'][0][1]>blobs['gt_boxes'][0][3]:
           iter += 1
@@ -294,6 +296,7 @@ def get_training_roidb(imdb):
     print('done')
 
   print('Preparing training data...')
+  #pdb.set_trace()
   rdl_roidb.prepare_roidb(imdb)
   print('done')
 

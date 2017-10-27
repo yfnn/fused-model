@@ -1,8 +1,5 @@
 # --------------------------------------------------------
-# Fast R-CNN
-# Copyright (c) 2015 Microsoft
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Ross Girshick and Xinlei Chen
+# Written by FanYang
 # --------------------------------------------------------
 from __future__ import absolute_import
 from __future__ import division
@@ -23,22 +20,15 @@ from .voc_eval import voc_eval
 from model.config import cfg
 import pdb
 
-class pascal_voc(imdb):
-  def __init__(self, image_set, year, devkit_path=None):
-    imdb.__init__(self, 'voc_' + year + '_' + image_set)
-    self._year = year
+class kaist(imdb):
+  def __init__(self, image_set, devkit_path=None):
+    imdb.__init__(self, 'kaist_' + image_set)
     self._image_set = image_set
     self._devkit_path = self._get_default_path() if devkit_path is None \
       else devkit_path
-    self._data_path = os.path.join(self._devkit_path, 'VOC' + self._year)
-    #self._classes = ('__background__',  # always index 0
-    #                 'aeroplane', 'bicycle', 'bird', 'boat',
-    #                 'bottle', 'bus', 'car', 'cat', 'chair',
-    #                 'cow', 'diningtable', 'dog', 'horse',
-    #                 'motorbike', 'person', 'pottedplant',
-    #                 'sheep', 'sofa', 'train', 'tvmonitor')
+    self._data_path = os.path.join(self._devkit_path, 'data')
     self._classes = ('__background__',  # always index 0
-                     'person')
+                     'person','people','cyclist','person?')
     self._class_to_ind = dict(list(zip(self.classes, list(range(self.num_classes)))))
     self._image_ext = '.jpg'
     self._image_index = self._load_image_set_index()
@@ -69,20 +59,24 @@ class pascal_voc(imdb):
     """
     Construct an image path from the image's "index" identifier.
     """
-    image_path = os.path.join(self._data_path, 'JPEGImages',
-                              index + self._image_ext)
-    assert os.path.exists(image_path), \
-      'Path does not exist: {}'.format(image_path)
-    return image_path
+    indexs = index.split('/')
+    image_path_T = os.path.join(self._data_path, 'images', indexs[0],
+                                indexs[1], 'lwir', indexs[2] + self._image_ext)
+    image_path_RGB = os.path.join(self._data_path, 'images', indexs[0],
+                                indexs[1], 'visible', indexs[2] + self._image_ext)
+    assert os.path.exists(image_path_T), \
+      'Path does not exist: {}'.format(image_path_T)
+    assert os.path.exists(image_path_RGB), \
+      'Path does not exist: {}'.format(image_path_RGB)
+    return image_path_T,image_path_RGB
 
   def _load_image_set_index(self):
     """
     Load the indexes listed in this dataset's image set file.
+    修改这里可以调整数据集采样率
     """
-    # Example path to image set file:
-    # self._devkit_path + /VOCdevkit2007/VOC2007/ImageSets/Main/val.txt
-    image_set_file = os.path.join(self._data_path, 'ImageSets', 'Main',
-                                  self._image_set + '.txt')
+    image_set_file = os.path.join(self._data_path, 'imageSets',
+                                  self._image_set + '20.txt')
     assert os.path.exists(image_set_file), \
       'Path does not exist: {}'.format(image_set_file)
     with open(image_set_file) as f:
@@ -93,7 +87,7 @@ class pascal_voc(imdb):
     """
     Return the default path where PASCAL VOC is expected to be installed.
     """
-    return os.path.join(cfg.DATA_DIR, 'VOCdevkit' + self._year)
+    return os.path.join(cfg.DATA_DIR, 'KAISTdevkit')
 
   def gt_roidb(self):
     """
@@ -101,6 +95,7 @@ class pascal_voc(imdb):
 
     This function loads/saves from/to a cache file to speed up future calls.
     """
+    #pdb.set_trace()
     cache_file = os.path.join(self.cache_path, self.name + '_gt_roidb.pkl')
     if os.path.exists(cache_file):
       with open(cache_file, 'rb') as fid:
@@ -111,13 +106,12 @@ class pascal_voc(imdb):
       print('{} gt roidb loaded from {}'.format(self.name, cache_file))
       return roidb
 
-    gt_roidb = [self._load_pascal_annotation(index)
+    gt_roidb = [self._load_kaist_annotation(index)
                 for index in self.image_index]
-    #pdb.set_trace()
     with open(cache_file, 'wb') as fid:
       pickle.dump(gt_roidb, fid, pickle.HIGHEST_PROTOCOL)
     print('wrote gt roidb to {}'.format(cache_file))
-
+    #pdb.set_trace()
     return gt_roidb
 
   def rpn_roidb(self):
@@ -139,24 +133,26 @@ class pascal_voc(imdb):
       box_list = pickle.load(f)
     return self.create_roidb_from_box_list(box_list, gt_roidb)
 
-  def _load_pascal_annotation(self, index):
+  def _load_kaist_annotation(self, index):
     """
-    Load image and bounding boxes info from XML file in the PASCAL VOC
-    format.
+    Load image and bounding boxes info from txt file
     """
-    #pdb.set_trace()
-    filename = os.path.join(self._data_path, 'Annotations', index + '.xml')
-    tree = ET.parse(filename)
-    objs = tree.findall('object')
-    if not self.config['use_diff']:
-      # Exclude the samples labeled as difficult
-      non_diff_objs = [
-        obj for obj in objs if int(obj.find('difficult').text) == 0]
-      # if len(non_diff_objs) != len(objs):
-      #     print 'Removed {} difficult objects'.format(
-      #         len(objs) - len(non_diff_objs))
-      objs = non_diff_objs
-    num_objs = len(objs)
+    filename = os.path.join(self._data_path, 'annotations', index + '.txt')
+    #tree = ET.parse(filename)
+    #objs = tree.findall('object')
+    #if not self.config['use_diff']:
+    #  # Exclude the samples labeled as difficult
+    #  non_diff_objs = [
+    #    obj for obj in objs if int(obj.find('difficult').text) == 0]
+    #  # if len(non_diff_objs) != len(objs):
+    #  #     print 'Removed {} difficult objects'.format(
+    #  #         len(objs) - len(non_diff_objs))
+    #  objs = non_diff_objs
+    #num_objs = len(objs)
+
+    f = open(filename,'r')
+    s = f.readlines()
+    num_objs = len(s)-1
 
     boxes = np.zeros((num_objs, 4), dtype=np.uint16)
     gt_classes = np.zeros((num_objs), dtype=np.int32)
@@ -165,18 +161,20 @@ class pascal_voc(imdb):
     seg_areas = np.zeros((num_objs), dtype=np.float32)
 
     # Load object bounding boxes into a data frame.
-    for ix, obj in enumerate(objs):
-      bbox = obj.find('bndbox')
+    for ix, obj in enumerate(s):
+      if(ix == 0):
+        continue
+      obj_splits = obj.split(' ')
       # Make pixel indexes 0-based
-      x1 = float(bbox.find('xmin').text) - 1
-      y1 = float(bbox.find('ymin').text) - 1
-      x2 = float(bbox.find('xmax').text) - 1
-      y2 = float(bbox.find('ymax').text) - 1
-      cls = self._class_to_ind[obj.find('name').text.lower().strip()]
-      boxes[ix, :] = [x1, y1, x2, y2]
-      gt_classes[ix] = cls
-      overlaps[ix, cls] = 1.0
-      seg_areas[ix] = (x2 - x1 + 1) * (y2 - y1 + 1)
+      x1 = float(obj_splits[1]) - 1
+      y1 = float(obj_splits[2]) - 1
+      x2 = float(obj_splits[1]) + float(obj_splits[3]) - 1
+      y2 = float(obj_splits[2]) + float(obj_splits[4]) - 1
+      cls = self._class_to_ind[obj_splits[0]]
+      boxes[ix-1, :] = [x1, y1, x2, y2]
+      gt_classes[ix-1] = cls
+      overlaps[ix-1, cls] = 1.0
+      seg_areas[ix-1] = (x2 - x1 + 1) * (y2 - y1 + 1)
 
     overlaps = scipy.sparse.csr_matrix(overlaps)
 
