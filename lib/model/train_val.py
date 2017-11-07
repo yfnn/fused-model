@@ -101,7 +101,7 @@ class SolverWrapper(object):
       # Set the random seed for tensorflow
       tf.set_random_seed(cfg.RNG_SEED)
       # Build the main computation graph
-      pdb.set_trace()
+      #pdb.set_trace()
       layers = self.net.create_architecture(sess, 'TRAIN', self.imdb.num_classes, tag='default',
                                             anchor_scales=cfg.ANCHOR_SCALES,
                                             anchor_ratios=cfg.ANCHOR_RATIOS)
@@ -335,9 +335,9 @@ def train_net(network, imdb, roidb, valroidb, output_dir, tb_dir,
   roidb = filter_roidb(roidb)
   valroidb = filter_roidb(valroidb)
 
-  #tfconfig = tf.ConfigProto(allow_soft_placement=True)
-  #tfconfig.gpu_options.allow_growth = True
-  tfconfig = tf.ConfigProto(device_count={'GPU':0})
+  tfconfig = tf.ConfigProto(allow_soft_placement=True)
+  tfconfig.gpu_options.allow_growth = True
+  #tfconfig = tf.ConfigProto(device_count={'GPU':0})
 
   with tf.Session(config=tfconfig) as sess:
     sw = SolverWrapper(sess, network, imdb, roidb, valroidb, output_dir, tb_dir,

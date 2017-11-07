@@ -25,7 +25,7 @@ from utils.blob import im_list_to_blob
 from model.config import cfg, get_output_dir
 from model.bbox_transform import clip_boxes, bbox_transform_inv
 
-def _get_image_blob(im):
+def _get_image_blob(imT, imRGB):
   """Converts an image into a network input.
   Arguments:
     im (ndarray): a color image in BGR order
@@ -34,10 +34,12 @@ def _get_image_blob(im):
     im_scale_factors (list): list of image scales (relative to im) used
       in the image pyramid
   """
-  im_orig = im.astype(np.float32, copy=True)
-  im_orig -= cfg.PIXEL_MEANS
+  imT_orig = imT.astype(np.float32, copy=True)
+  imT_orig -= cfg.PIXEL_MEANS_T
+  imRGB_orig = imRGB.astype(np.float32, copy=True)
+  imRGB_orig -= cfg.PIXEL_MEANS_RGB
 
-  im_shape = im_orig.shape
+  im_shape = imT_orig.shape
   im_size_min = np.min(im_shape[0:2])
   im_size_max = np.max(im_shape[0:2])
 
@@ -49,20 +51,23 @@ def _get_image_blob(im):
     # Prevent the biggest axis from being more than MAX_SIZE
     if np.round(im_scale * im_size_max) > cfg.TEST.MAX_SIZE:
       im_scale = float(cfg.TEST.MAX_SIZE) / float(im_size_max)
-    im = cv2.resize(im_orig, None, None, fx=im_scale, fy=im_scale,
+    imT = cv2.resize(imT_orig, None, None, fx=im_scale, fy=im_scale,
+            interpolation=cv2.INTER_LINEAR)
+    imRGB = cv2.resize(imRGB_orig, None, None, fx=im_scale, fy=im_scale,
             interpolation=cv2.INTER_LINEAR)
     im_scale_factors.append(im_scale)
-    processed_ims.append(im)
+    processed_ims.append(imT)
+    processed_ims.append(imRGB)
 
   # Create a blob to hold the input images
-  blob = im_list_to_blob(processed_ims)
+  blobT, blobRGB = im_list_to_blob(processed_ims)
 
-  return blob, np.array(im_scale_factors)
+  return blobT, blobRGB, np.array(im_scale_factors)
 
-def _get_blobs(im):
+def _get_blobs(imT, imRGB):
   """Convert an image and RoIs within that image into network inputs."""
   blobs = {}
-  blobs['data'], im_scale_factors = _get_image_blob(im)
+  blobs['dataT'], blobs['dataRGB'], im_scale_factors = _get_image_blob(imT, imRGB)
 
   return blobs, im_scale_factors
 
@@ -85,14 +90,15 @@ def _rescale_boxes(boxes, inds, scales):
 
   return boxes
 
-def im_detect(sess, net, im):
-  blobs, im_scales = _get_blobs(im)
+def im_detect(sess, net, imT, imRGB):
+  blobs, im_scales = _get_blobs(imT, imRGB)
   assert len(im_scales) == 1, "Only single-image batch implemented"
 
-  im_blob = blobs['data']
-  blobs['im_info'] = np.array([[im_blob.shape[1], im_blob.shape[2], im_scales[0]]], dtype=np.float32)
+  imT_blob = blobs['dataT']
+  imRGB_blob = blobs['dataRGB']
+  blobs['im_info'] = np.array([[imT_blob.shape[1], imT_blob.shape[2], im_scales[0]]], dtype=np.float32)
 
-  _, scores, bbox_pred, rois = net.test_image(sess, blobs['data'], blobs['im_info'])
+  _, scores, bbox_pred, rois = net.test_image(sess, imT_blob, imRGB_blob, blobs['im_info'])
   
   boxes = rois[:, 1:5] / im_scales[0]
   scores = np.reshape(scores, [scores.shape[0], -1])
@@ -101,7 +107,7 @@ def im_detect(sess, net, im):
     # Apply bounding-box regression deltas
     box_deltas = bbox_pred
     pred_boxes = bbox_transform_inv(boxes, box_deltas)
-    pred_boxes = _clip_boxes(pred_boxes, im.shape)
+    pred_boxes = _clip_boxes(pred_boxes, imT.shape)
   else:
     # Simply repeat the boxes, once for each class
     pred_boxes = np.tile(boxes, (1, scores.shape[1]))
@@ -137,7 +143,7 @@ def apply_nms(all_boxes, thresh):
       nms_boxes[cls_ind][im_ind] = dets[keep, :].copy()
   return nms_boxes
 
-def test_net(sess, net, imdb, weights_filename, max_per_image=100, thresh=0.05):
+def test_net(sess, net, imdb, weights_filename, max_per_image=100, thresh=0.01):
   np.random.seed(cfg.RNG_SEED)
   """Test a Fast R-CNN network on an image database."""
   num_images = len(imdb.image_index)
@@ -152,15 +158,19 @@ def test_net(sess, net, imdb, weights_filename, max_per_image=100, thresh=0.05):
   _t = {'im_detect' : Timer(), 'misc' : Timer()}
 
   for i in range(num_images):
-    im = cv2.imread(imdb.image_path_at(i))
+    #pdb.set_trace()
+    image_path_T, image_path_RGB = imdb.image_path_at(i)
+    imT = cv2.imread(image_path_T)
+    imRGB = cv2.imread(image_path_RGB)
 
     _t['im_detect'].tic()
-    scores, boxes = im_detect(sess, net, im)
+    scores, boxes = im_detect(sess, net, imT, imRGB)
     _t['im_detect'].toc()
 
     _t['misc'].tic()
 
     # skip j = 0, because it's the background class
+    #pdb.set_trace()
     for j in range(1, imdb.num_classes):
       inds = np.where(scores[:, j] > thresh)[0]
       cls_scores = scores[inds, j]

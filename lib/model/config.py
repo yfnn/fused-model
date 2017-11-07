@@ -19,7 +19,7 @@ cfg = __C
 __C.TRAIN = edict()
 
 # Initial learning rate
-__C.TRAIN.LEARNING_RATE = 0.0001
+__C.TRAIN.LEARNING_RATE = 0.001
 
 # Momentum
 __C.TRAIN.MOMENTUM = 0.9
@@ -31,7 +31,7 @@ __C.TRAIN.WEIGHT_DECAY = 0.0005
 __C.TRAIN.GAMMA = 0.1
 
 # Step size for reducing the learning rate, currently only support one step
-__C.TRAIN.STEPSIZE = 30000
+__C.TRAIN.STEPSIZE = 28380
 
 # Iteration intervals for showing the loss during training, on command line interface
 __C.TRAIN.DISPLAY = 10
@@ -250,8 +250,8 @@ __C.DEDUP_BOXES = 1. / 16.
 # Pixel mean values (BGR order) as a (1, 1, 3) array
 # We use the same pixel mean for all networks even though it's not exactly what
 # they were trained with
-__C.PIXEL_MEANS_RGB = np.array([[[102.9801, 115.9465, 122.7717]]])
-__C.PIXEL_MEANS_T   = np.array([[[102.9801, 102.9801, 102.9801]]])#红外图三通道一样，这里的三个数应该一样
+__C.PIXEL_MEANS_RGB = np.array([[[79.6872, 88.7523, 94.5512]]])
+__C.PIXEL_MEANS_T   = np.array([[[43.4920, 43.4920, 43.4920]]])
 
 # For reproducibility
 __C.RNG_SEED = 3
@@ -272,7 +272,7 @@ __C.MATLAB = 'matlab'
 __C.EXP_DIR = 'default'
 
 # Use GPU implementation of non-maximum suppression
-__C.USE_GPU_NMS = False
+__C.USE_GPU_NMS = True
 
 # Default GPU device id
 __C.GPU_ID = 0
@@ -287,7 +287,7 @@ __C.POOLING_SIZE = 7
 __C.ANCHOR_SCALES = [8,16,32]
 
 # Anchor ratios for RPN
-__C.ANCHOR_RATIOS = [0.5,1,2]
+__C.ANCHOR_RATIOS = [1,2]
 
 
 def get_output_dir(imdb, weights_filename):

@@ -38,7 +38,7 @@ for year in ['2015']:
 
 '''Add for kaist dataset. 2017.10.25'''
 #Set up kaist_split
-for split in ['test', 'train']:
+for split in ['test', 'train','val']:
   name = 'kaist_{}'.format(split)
   __sets[name] = (lambda split=split: kaist(split))
 

@@ -407,8 +407,9 @@ class Network(object):
     return feat
 
   # only useful during testing mode
-  def test_image(self, sess, image, im_info):
-    feed_dict = {self._image: image,
+  def test_image(self, sess, imageT, imageRGB, im_info):
+    feed_dict = {self._imageT: imageT,
+                 self._imageRGB: imageRGB,
                  self._im_info: im_info}
 
     cls_score, cls_prob, bbox_pred, rois = sess.run([self._predictions["cls_score"],

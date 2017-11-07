@@ -15,19 +15,45 @@ import pdb
 
 def parse_rec(filename):
   """ Parse a PASCAL VOC xml file """
-  tree = ET.parse(filename)
+  #tree = ET.parse(filename)
+  #objects = []
+  #for obj in tree.findall('object'):
+  #  obj_struct = {}
+  #  obj_struct['name'] = obj.find('name').text
+  #  obj_struct['pose'] = obj.find('pose').text
+  #  obj_struct['truncated'] = int(obj.find('truncated').text)
+  #  obj_struct['difficult'] = int(obj.find('difficult').text)
+  #  bbox = obj.find('bndbox')
+  #  obj_struct['bbox'] = [int(bbox.find('xmin').text),
+  #                        int(bbox.find('ymin').text),
+  #                        int(bbox.find('xmax').text),
+  #                        int(bbox.find('ymax').text)]
+  #  objects.append(obj_struct)
   objects = []
-  for obj in tree.findall('object'):
+  f = open(filename,'r')
+  s = f.readlines()
+  num_objs = len(s)-1
+
+  for ix, obj in enumerate(s):
+    if(ix == 0):
+      continue
     obj_struct = {}
-    obj_struct['name'] = obj.find('name').text
-    obj_struct['pose'] = obj.find('pose').text
-    obj_struct['truncated'] = int(obj.find('truncated').text)
-    obj_struct['difficult'] = int(obj.find('difficult').text)
-    bbox = obj.find('bndbox')
-    obj_struct['bbox'] = [int(bbox.find('xmin').text),
-                          int(bbox.find('ymin').text),
-                          int(bbox.find('xmax').text),
-                          int(bbox.find('ymax').text)]
+    obj_splits = obj.split(' ')
+    if(float(obj_splits[5])>1):
+      continue
+    if float(obj_splits[5])==0:
+      obj_struct['difficult']=int(0)
+    else:
+      obj_struct['difficult']=int(1)
+    obj_struct['name'] = obj_splits[0]
+    obj_struct['bbox'] = [float(obj_splits[1])-1,
+                          float(obj_splits[2])-1,
+                          float(obj_splits[1]) + float(obj_splits[3]) - 1,
+                          float(obj_splits[2]) + float(obj_splits[4]) - 1]
+    #if float(obj_splits[5])>0:
+    #  obj_struct['difficult']=int(1)
+    #else:
+    #  obj_struct['difficult']=int(0)
     objects.append(obj_struct)
 
   return objects
@@ -166,8 +192,8 @@ def voc_eval(detpath,
 
     # go down dets and mark TPs and FPs
     for d in range(nd):
-      R = class_recs[image_ids[d]]
-      bb = BB[d, :].astype(float)
+      R = class_recs[image_ids[d]]#ground truth boxes in a pic
+      bb = BB[d, :].astype(float) #one detection in this pic
       ovmax = -np.inf
       BBGT = R['bbox'].astype(float)
 
@@ -205,6 +231,7 @@ def voc_eval(detpath,
   fp = np.cumsum(fp)
   tp = np.cumsum(tp)
   rec = tp / float(npos)
+  pdb.set_trace()
   # avoid divide by zero in case the first detection matches a difficult
   # ground truth
   prec = tp / np.maximum(tp + fp, np.finfo(np.float64).eps)

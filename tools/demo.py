@@ -38,22 +38,22 @@ from nets.resnet_v1 import resnetv1
 #           'motorbike', 'person', 'pottedplant',
 #           'sheep', 'sofa', 'train', 'tvmonitor')
 CLASSES = ('__background__',
-           'person')
+           'person','people','cyclist','person?')
 
 
 #NETS = {'vgg16': ('vgg16_faster_rcnn_iter_70000.ckpt',),'res101': ('res101_faster_rcnn_iter_110000.ckpt',)}
 #DATASETS= {'pascal_voc': ('voc_2007_trainval',),'pascal_voc_0712': ('voc_2007_trainval+voc_2012_trainval',)}
-DATASETS= {'pascal_voc': ('voc_2007_trainval',),'pascal_voc_0712': ('voc_2007_trainval+voc_2012_trainval',)}
-NETS = {'vgg16': ('vgg16_faster_rcnn_iter_70000.ckpt',),'res101': ('res101_faster_rcnn_iter_4500.ckpt',)}
-NUM_CLASSES = 2
-def vis_detections(im, class_name, dets, thresh=0.5):
+DATASETS= {'kaist': ('kaist_train',),'pascal_voc_0712': ('voc_2007_trainval+voc_2012_trainval',)}
+NETS = {'vgg16': ('vgg16_faster_rcnn_iter_42570.ckpt',),'res101': ('res101_faster_rcnn_iter_4500.ckpt',)}
+NUM_CLASSES = 5
+def vis_detections(im, class_name, dets, fig, ax, thresh=0.5):
     """Draw detected bounding boxes."""
     inds = np.where(dets[:, -1] >= thresh)[0]
     if len(inds) == 0:
         return
 
     im = im[:, :, (2, 1, 0)]
-    fig, ax = plt.subplots(figsize=(12, 12))
+    #fig, ax = plt.subplots(figsize=(12, 12))
     ax.imshow(im, aspect='equal')
     for i in inds:
         bbox = dets[i, :4]
@@ -78,24 +78,29 @@ def vis_detections(im, class_name, dets, thresh=0.5):
     plt.tight_layout()
     plt.draw()
 
-def demo(sess, net, image_name):
+def demo(sess, net, image_name_T, image_name_RGB):
     """Detect object classes in an image using pre-computed object proposals."""
 
     # Load the demo image
-    im_file = os.path.join(cfg.DATA_DIR, 'demo', image_name)
-    im = cv2.imread(im_file)
+    imT_file = os.path.join(cfg.DATA_DIR, 'demo', image_name_T)
+    imT = cv2.imread(imT_file)
+    imRGB_file = os.path.join(cfg.DATA_DIR, 'demo', image_name_RGB)
+    imRGB = cv2.imread(imRGB_file)
 
     # Detect all object classes and regress object bounds
     timer = Timer()
     timer.tic()
-    scores, boxes = im_detect(sess, net, im)
+    scores, boxes = im_detect(sess, net, imT, imRGB)
     timer.toc()
     print('Detection took {:.3f}s for {:d} object proposals'.format(timer.total_time, boxes.shape[0]))
 
     # Visualize detections for each class
-    CONF_THRESH = 0.7
+    CONF_THRESH = 0.9
     NMS_THRESH = 0.3
+    fig, ax = plt.subplots(figsize=(12, 12))
     for cls_ind, cls in enumerate(CLASSES[1:]):
+        if cls == 'people':
+          continue
         cls_ind += 1 # because we skipped background
         cls_boxes = boxes[:, 4*cls_ind:4*(cls_ind + 1)]
         cls_scores = scores[:, cls_ind]
@@ -103,7 +108,7 @@ def demo(sess, net, image_name):
                           cls_scores[:, np.newaxis])).astype(np.float32)
         keep = nms(dets, NMS_THRESH)
         dets = dets[keep, :]
-        vis_detections(im, cls, dets, thresh=CONF_THRESH)
+        vis_detections(imRGB, cls, dets, fig, ax, thresh=CONF_THRESH)
 
 def parse_args():
     """Parse input arguments."""
@@ -118,14 +123,14 @@ def parse_args():
 
 if __name__ == '__main__':
     #pdb.set_trace()
-    with tf.device('/cpu:0'):
+    with tf.device('/gpu:0'):
         cfg.TEST.HAS_RPN = True  # Use RPN for proposalsi
         args = parse_args()
 
         # model path
         demonet = args.demo_net
         dataset = args.dataset
-        tfmodel = os.path.join('output', demonet, DATASETS[dataset][0], 'default',
+        tfmodel = os.path.join('/home/yangfan/fused-model/tf-faster-rcnn/output', demonet, DATASETS[dataset][0], 'default',
                               NETS[demonet][0])
 
 
@@ -134,9 +139,9 @@ if __name__ == '__main__':
                        'our server and place them properly?').format(tfmodel + '.meta'))
 
         # set config
-        #tfconfig = tf.ConfigProto(allow_soft_placement=True)
-    tfconfig = tf.ConfigProto(device_count={'GPU':0})
-    #tfconfig.gpu_options.allow_growth=True
+        tfconfig = tf.ConfigProto(allow_soft_placement=True)
+    #tfconfig = tf.ConfigProto(device_count={'GPU':0})
+    tfconfig.gpu_options.allow_growth=True
 
 
     # init session
@@ -150,20 +155,18 @@ if __name__ == '__main__':
     else:
         raise NotImplementedError
     net.create_architecture(sess, "TEST", NUM_CLASSES,
-                          tag='default', anchor_scales=[8, 16, 32])
+                          tag='default', anchor_scales=[8, 16, 32], anchor_ratios=[1,2])
     saver = tf.train.Saver()
     saver.restore(sess, tfmodel)
 
     print('Loaded network {:s}'.format(tfmodel))
     #pdb.set_trace()
 
-    im_names = ['000074.jpg','000107.jpg','000220.jpg','000411.jpg',
-                '001174.jpg','001192.jpg','001262.jpg','001293.jpg',
-                '001789.jpg','002360.jpg','000039.jpg','000746.jpg']
+    im_names = ['01794.jpg']
     for im_name in im_names:
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('Demo for data/demo/{}'.format(im_name))
-        demo(sess, net, im_name)
+        demo(sess, net, 'T'+im_name,'C'+im_name)
         #pdb.set_trace()
 
     plt.show()

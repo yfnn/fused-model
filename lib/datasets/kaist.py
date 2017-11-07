@@ -73,10 +73,15 @@ class kaist(imdb):
   def _load_image_set_index(self):
     """
     Load the indexes listed in this dataset's image set file.
-    修改这里可以调整数据集采样率
     """
+    if self._image_set == 'train':
+      set_index = '02.txt'
+    if self._image_set == 'val':
+      set_index = '20.txt'
+    if self._image_set == 'test':
+      set_index = '20.txt'
     image_set_file = os.path.join(self._data_path, 'imageSets',
-                                  self._image_set + '20.txt')
+                                  self._image_set + set_index)
     assert os.path.exists(image_set_file), \
       'Path does not exist: {}'.format(image_set_file)
     with open(image_set_file) as f:
@@ -195,7 +200,7 @@ class kaist(imdb):
     path = os.path.join(
       self._devkit_path,
       'results',
-      'VOC' + self._year,
+      'kaist',
       'Main',
       filename)
     return path
@@ -221,26 +226,27 @@ class kaist(imdb):
   def _do_python_eval(self, output_dir='output'):
     annopath = os.path.join(
       self._devkit_path,
-      'VOC' + self._year,
-      'Annotations',
-      '{:s}.xml')
+      'data',
+      'annotations',
+      '{:s}.txt')
     imagesetfile = os.path.join(
       self._devkit_path,
-      'VOC' + self._year,
-      'ImageSets',
-      'Main',
-      self._image_set + '.txt')
+      'data',
+      'imageSets',
+      self._image_set + '20.txt')
     cachedir = os.path.join(self._devkit_path, 'annotations_cache')
     aps = []
     # The PASCAL VOC metric changed in 2010
-    use_07_metric = True if int(self._year) < 2010 else False
+    use_07_metric = True
     print('VOC07 metric? ' + ('Yes' if use_07_metric else 'No'))
     if not os.path.isdir(output_dir):
       os.mkdir(output_dir)
     for i, cls in enumerate(self._classes):
-      if cls == '__background__':
+      if cls == '__background__' or cls == 'person?':
         continue
       filename = self._get_voc_results_file_template().format(cls)
+      #if(cls == 'people' or cls == 'cyclist'):
+      #  pdb.set_trace()
       rec, prec, ap = voc_eval(
         filename, annopath, imagesetfile, cls, cachedir, ovthresh=0.5,
         use_07_metric=use_07_metric)

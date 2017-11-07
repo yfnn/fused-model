@@ -46,7 +46,7 @@ def locate_cuda():
 
     cudaconfig = {'home':home, 'nvcc':nvcc,
                   'include': pjoin(home, 'include'),
-                  'lib64': pjoin(home, 'lib64')}
+                  'lib32': pjoin(home, 'lib32')}
     for k, v in cudaconfig.items():
         if not os.path.exists(v):
             raise EnvironmentError('The CUDA %s path could not be located in %s' % (k, v))
@@ -109,36 +109,36 @@ ext_modules = [
         "utils.cython_bbox",
         ["utils/bbox.pyx"],
         extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
-        include_dirs = [numpy_include, '/usr/include/python3.5m']
+        include_dirs = [numpy_include]#, '/usr/include/python3.5m']
     ),
     Extension(
         "utils.cython_nms",
         ["utils/nms.pyx"],
         extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
-        include_dirs = [numpy_include, '/usr/include/python3.5m']
+        include_dirs = [numpy_include]#, '/usr/include/python3.5m']
     ),
     Extension(
         "nms.cpu_nms",
         ["nms/cpu_nms.pyx"],
         extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
-        include_dirs = [numpy_include, '/usr/include/python3.5m']
+        include_dirs = [numpy_include]#, '/usr/include/python3.5m']
     ),
     Extension('nms.gpu_nms',
         ['nms/nms_kernel.cu', 'nms/gpu_nms.pyx'],
-        library_dirs=[CUDA['lib64']],
+        library_dirs=[CUDA['lib32']],
         libraries=['cudart'],
         language='c++',
-        runtime_library_dirs=[CUDA['lib64']],
+        runtime_library_dirs=[CUDA['lib32']],
         # this syntax is specific to this build system
         # we're only going to use certain compiler args with nvcc and not with gcc
         # the implementation of this trick is in customize_compiler() below
         extra_compile_args={'gcc': ["-Wno-unused-function"],
-                            'nvcc': ['-arch=sm_52',
+                            'nvcc': ['-arch=sm_61',
                                      '--ptxas-options=-v',
                                      '-c',
                                      '--compiler-options',
                                      "'-fPIC'"]},
-        include_dirs = [numpy_include, CUDA['include'], '/usr/include/python3.5m']
+        include_dirs = [numpy_include, CUDA['include']]#, '/usr/include/python3.5m']
     )
 ]
 

@@ -39,7 +39,7 @@ def parse_args():
                       default='voc_2007_trainval', type=str)
   parser.add_argument('--imdbval', dest='imdbval_name',
                       help='dataset to validate on',
-                      default='kaist_test', type=str)
+                      default='kaist_val', type=str)
   parser.add_argument('--iters', dest='max_iters',
                       help='number of iterations to train',
                       default=70000, type=int)
@@ -124,7 +124,7 @@ if __name__ == '__main__':
   cfg.TRAIN.USE_FLIPPED = orgflip
 
   # load network
-  if args.net == 'vgg16':#定义了vgg16对象，，定义了成员变量
+  if args.net == 'vgg16':
     net = vgg16(batch_size=cfg.TRAIN.IMS_PER_BATCH)
   elif args.net == 'res50':
     net = resnetv1(batch_size=cfg.TRAIN.IMS_PER_BATCH, num_layers=50)
