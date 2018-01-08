@@ -112,6 +112,7 @@ class SolverWrapper(object):
       momentum = cfg.TRAIN.MOMENTUM
       self.optimizer = tf.train.MomentumOptimizer(lr, momentum)
 
+      pdb.set_trace()
       # Compute the gradients with regard to the loss
       gvs = self.optimizer.compute_gradients(loss)
       # Double the gradient of the bias if set
@@ -124,6 +125,7 @@ class SolverWrapper(object):
               scale *= 2.
             if not np.allclose(scale, 1.0):
               grad = tf.multiply(grad, scale)
+            #if not(var.name[0:11]==u'vgg_16/conv'):
             final_gvs.append((grad, var))
         train_op = self.optimizer.apply_gradients(final_gvs)
       else:
@@ -163,10 +165,12 @@ class SolverWrapper(object):
       sess.run(tf.variables_initializer(variables, name='init'))
       var_keep_dic = self.get_variables_in_checkpoint_file(self.pretrained_model)
       # Get the variables to restore, ignoring the variables to fix
-      variables_to_restore = self.net.get_variables_to_restore(variables, var_keep_dic)
+      T_variables_to_restore,RGB_variables_to_restore = self.net.get_variables_to_restore(variables, var_keep_dic)
 
-      restorer = tf.train.Saver(variables_to_restore)
-      restorer.restore(sess, self.pretrained_model)
+      Trestorer = tf.train.Saver(T_variables_to_restore)
+      Trestorer.restore(sess, self.pretrained_model)
+      RGBrestorer = tf.train.Saver(RGB_variables_to_restore)
+      RGBrestorer.restore(sess, self.pretrained_model)
       print('Loaded.')
       # Need to fix the variables before loading, so that the RGB weights are changed to BGR
       # For VGG16 it also changes the convolutional weights fc6 and fc7 to
@@ -177,28 +181,51 @@ class SolverWrapper(object):
       last_snapshot_iter = 0
     else:
       # Get the most recent snapshot and restore
-      ss_paths = [ss_paths[-1]]
-      np_paths = [np_paths[-1]]
+      #ss_paths = [ss_paths[-1]]
+      #np_paths = [np_paths[-1]]
 
-      print('Restoring model snapshots from {:s}'.format(sfiles[-1]))
-      self.saver.restore(sess, str(sfiles[-1]))
-      print('Restored.')
+      ##########################################################
+      #restore rgb_clear conv and thermal_clear conv represently
+      ##########################################################
+      #pdb.set_trace()
+      variables = tf.global_variables()
+      sess.run(tf.variables_initializer(variables, name='init'))
+      var_keep_dic_T = self.get_variables_in_checkpoint_file(self.output_dir+'/vgg16_faster_rcnn_iter_29664.ckpt')
+      var_keep_dic_RGB = self.get_variables_in_checkpoint_file(self.output_dir+'/vgg16_faster_rcnn_iter_29154.ckpt')
+      T_variables_to_restore,RGB_variables_to_restore = self.net.get_variables_to_restore(variables, var_keep_dic_T, var_keep_dic_RGB)
+
+      Trestorer = tf.train.Saver(T_variables_to_restore)
+      Trestorer.restore(sess, self.output_dir+'/vgg16_faster_rcnn_iter_29664.ckpt')
+      RGBrestorer = tf.train.Saver(RGB_variables_to_restore)
+      RGBrestorer.restore(sess, self.output_dir+'/vgg16_faster_rcnn_iter_29154.ckpt')
+      print('Loaded.')
+      self.net.fix_variables(sess, self.pretrained_model)
+      print('Fixed.')
+      ##########################################################
+
+      #print('Restoring model snapshots from {:s}'.format(sfiles[-1]))
+      #self.saver.restore(sess, str(sfiles[-1]))
+      #print('Restored.')
+
       # Needs to restore the other hyper-parameters/states for training, (TODO xinlei) I have
       # tried my best to find the random states so that it can be recovered exactly
       # However the Tensorflow state is currently not available
+      
       with open(str(nfiles[-1]), 'rb') as fid:
+        #pdb.set_trace()
         st0 = pickle.load(fid)
         cur = pickle.load(fid)
         perm = pickle.load(fid)
         cur_val = pickle.load(fid)
         perm_val = pickle.load(fid)
-        last_snapshot_iter = pickle.load(fid)
+        #last_snapshot_iter = pickle.load(fid)
+        last_snapshot_iter = 0
 
         np.random.set_state(st0)
-        self.data_layer._cur = cur
-        self.data_layer._perm = perm
-        self.data_layer_val._cur = cur_val
-        self.data_layer_val._perm = perm_val
+        #self.data_layer._cur = cur
+        #self.data_layer._perm = perm
+        #self.data_layer_val._cur = cur_val
+        #self.data_layer_val._perm = perm_val
 
         # Set the learning rate, only reduce once
         if last_snapshot_iter > cfg.TRAIN.STEPSIZE:
@@ -237,6 +264,7 @@ class SolverWrapper(object):
         last_summary_time = now
       else:
         # Compute the graph without summary
+        #pdb.set_trace()
         rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss = \
           self.net.train_step(sess, blobs, train_op)
       timer.toc()
@@ -257,27 +285,27 @@ class SolverWrapper(object):
         ss_paths.append(snapshot_path)
 
         # Remove the old snapshots if there are too many
-        if len(np_paths) > cfg.TRAIN.SNAPSHOT_KEPT:
-          to_remove = len(np_paths) - cfg.TRAIN.SNAPSHOT_KEPT
-          for c in range(to_remove):
-            nfile = np_paths[0]
-            os.remove(str(nfile))
-            np_paths.remove(nfile)
+        #if len(np_paths) > cfg.TRAIN.SNAPSHOT_KEPT:
+        #  to_remove = len(np_paths) - cfg.TRAIN.SNAPSHOT_KEPT
+        #  for c in range(to_remove):
+        #    nfile = np_paths[0]
+        #    os.remove(str(nfile))
+        #    np_paths.remove(nfile)
 
-        if len(ss_paths) > cfg.TRAIN.SNAPSHOT_KEPT:
-          to_remove = len(ss_paths) - cfg.TRAIN.SNAPSHOT_KEPT
-          for c in range(to_remove):
-            sfile = ss_paths[0]
-            # To make the code compatible to earlier versions of Tensorflow,
-            # where the naming tradition for checkpoints are different
-            if os.path.exists(str(sfile)):
-              os.remove(str(sfile))
-            else:
-              os.remove(str(sfile + '.data-00000-of-00001'))
-              os.remove(str(sfile + '.index'))
-            sfile_meta = sfile + '.meta'
-            os.remove(str(sfile_meta))
-            ss_paths.remove(sfile)
+        #if len(ss_paths) > cfg.TRAIN.SNAPSHOT_KEPT:
+        #  to_remove = len(ss_paths) - cfg.TRAIN.SNAPSHOT_KEPT
+        #  for c in range(to_remove):
+        #    sfile = ss_paths[0]
+        #    # To make the code compatible to earlier versions of Tensorflow,
+        #    # where the naming tradition for checkpoints are different
+        #    if os.path.exists(str(sfile)):
+        #      os.remove(str(sfile))
+        #    else:
+        #      os.remove(str(sfile + '.data-00000-of-00001'))
+        #      os.remove(str(sfile + '.index'))
+        #    sfile_meta = sfile + '.meta'
+        #    os.remove(str(sfile_meta))
+        #    ss_paths.remove(sfile)
 
       iter += 1
 
@@ -335,7 +363,7 @@ def train_net(network, imdb, roidb, valroidb, output_dir, tb_dir,
   roidb = filter_roidb(roidb)
   valroidb = filter_roidb(valroidb)
 
-  tfconfig = tf.ConfigProto(allow_soft_placement=True)
+  tfconfig = tf.ConfigProto(allow_soft_placement=True)#,log_device_placement=True)
   tfconfig.gpu_options.allow_growth = True
   #tfconfig = tf.ConfigProto(device_count={'GPU':0})
 
