@@ -40,11 +40,12 @@ def parse_rec(filename):
     obj_struct = {}
     obj_splits = obj.split(' ')
     if(float(obj_splits[5])>1):
-      continue
-    if float(obj_splits[5])==0:
-      obj_struct['difficult']=int(0)
-    else:
       obj_struct['difficult']=int(1)
+      #continue
+    #if float(obj_splits[5])==0:
+    #  obj_struct['difficult']=int(0)
+    else:
+      obj_struct['difficult']=int(0)
     obj_struct['name'] = obj_splits[0]
     obj_struct['bbox'] = [float(obj_splits[1])-1,
                           float(obj_splits[2])-1,
@@ -55,6 +56,7 @@ def parse_rec(filename):
     #else:
     #  obj_struct['difficult']=int(0)
     objects.append(obj_struct)
+  f.close()
 
   return objects
 
@@ -98,6 +100,7 @@ def voc_eval(detpath,
              imagesetfile,
              classname,
              cachedir,
+             test_file,
              ovthresh=0.5,
              use_07_metric=False):
   """rec, prec, ap = voc_eval(detpath,
@@ -191,6 +194,7 @@ def voc_eval(detpath,
     image_ids = [image_ids[x] for x in sorted_ind]
 
     # go down dets and mark TPs and FPs
+    #pdb.set_trace()
     for d in range(nd):
       R = class_recs[image_ids[d]]#ground truth boxes in a pic
       bb = BB[d, :].astype(float) #one detection in this pic
@@ -231,10 +235,15 @@ def voc_eval(detpath,
   fp = np.cumsum(fp)
   tp = np.cumsum(tp)
   rec = tp / float(npos)
-  pdb.set_trace()
+  #pdb.set_trace()
   # avoid divide by zero in case the first detection matches a difficult
   # ground truth
   prec = tp / np.maximum(tp + fp, np.finfo(np.float64).eps)
   ap = voc_ap(rec, prec, use_07_metric)
+  if np.sum(fp>=0)==0:
+      fp=[0]
+  if np.sum(tp>=0)==0:
+      tp=[0]
+  test_file.write(str(fp[-1])+' '+str(tp[-1])+' '+str(ap)+' ')
 
   return rec, prec, ap

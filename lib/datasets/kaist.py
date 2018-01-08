@@ -182,6 +182,7 @@ class kaist(imdb):
       seg_areas[ix-1] = (x2 - x1 + 1) * (y2 - y1 + 1)
 
     overlaps = scipy.sparse.csr_matrix(overlaps)
+    f.close()
 
     return {'boxes': boxes,
             'gt_classes': gt_classes,
@@ -223,7 +224,7 @@ class kaist(imdb):
                            dets[k, 0] + 1, dets[k, 1] + 1,
                            dets[k, 2] + 1, dets[k, 3] + 1))
 
-  def _do_python_eval(self, output_dir='output'):
+  def _do_python_eval(self, test_file, output_dir='output'):
     annopath = os.path.join(
       self._devkit_path,
       'data',
@@ -234,6 +235,7 @@ class kaist(imdb):
       'data',
       'imageSets',
       self._image_set + '20.txt')
+    #pdb.set_trace()
     cachedir = os.path.join(self._devkit_path, 'annotations_cache')
     aps = []
     # The PASCAL VOC metric changed in 2010
@@ -248,7 +250,7 @@ class kaist(imdb):
       #if(cls == 'people' or cls == 'cyclist'):
       #  pdb.set_trace()
       rec, prec, ap = voc_eval(
-        filename, annopath, imagesetfile, cls, cachedir, ovthresh=0.5,
+        filename, annopath, imagesetfile, cls, cachedir, test_file, ovthresh=0.5,
         use_07_metric=use_07_metric)
       aps += [ap]
       print(('AP for {} = {:.4f}'.format(cls, ap)))
@@ -284,9 +286,9 @@ class kaist(imdb):
     print(('Running:\n{}'.format(cmd)))
     status = subprocess.call(cmd, shell=True)
 
-  def evaluate_detections(self, all_boxes, output_dir):
+  def evaluate_detections(self, all_boxes, output_dir, test_file):
     self._write_voc_results_file(all_boxes)
-    self._do_python_eval(output_dir)
+    self._do_python_eval(test_file, output_dir)
     if self.config['matlab_eval']:
       self._do_matlab_eval(output_dir)
     if self.config['cleanup']:
