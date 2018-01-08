@@ -143,7 +143,7 @@ def apply_nms(all_boxes, thresh):
       nms_boxes[cls_ind][im_ind] = dets[keep, :].copy()
   return nms_boxes
 
-def test_net(sess, net, imdb, weights_filename, max_per_image=100, thresh=0.01):
+def test_net(sess, net, imdb, weights_filename, test_file, max_per_image=100, thresh=0.5):
   np.random.seed(cfg.RNG_SEED)
   """Test a Fast R-CNN network on an image database."""
   num_images = len(imdb.image_index)
@@ -202,5 +202,5 @@ def test_net(sess, net, imdb, weights_filename, max_per_image=100, thresh=0.01):
     f.close()
 
   print('Evaluating detections')
-  imdb.evaluate_detections(all_boxes, output_dir)
+  imdb.evaluate_detections(all_boxes, output_dir, test_file)
 
